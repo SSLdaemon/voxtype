@@ -846,19 +846,24 @@ struct ExtendedStatusInfo {
 
 impl ExtendedStatusInfo {
     fn from_config(config: &config::Config) -> Self {
-        let backend = setup::gpu::detect_current_backend()
-            .map(|b| match b {
+        // Try Whisper backend detection first, then fall back to ONNX backend detection
+        let backend = if let Some(b) = setup::gpu::detect_current_backend() {
+            match b {
                 setup::gpu::Backend::Cpu => "CPU (legacy)",
                 setup::gpu::Backend::Native => "CPU (native)",
                 setup::gpu::Backend::Avx2 => "CPU (AVX2)",
                 setup::gpu::Backend::Avx512 => "CPU (AVX-512)",
                 setup::gpu::Backend::Vulkan => "GPU (Vulkan)",
-            })
-            .unwrap_or("unknown")
-            .to_string();
+            }
+            .to_string()
+        } else if let Some(pb) = setup::parakeet::detect_current_parakeet_backend() {
+            pb.display_name().to_string()
+        } else {
+            "unknown".to_string()
+        };
 
         Self {
-            model: config.whisper.model.clone(),
+            model: config.model_name().to_string(),
             device: config.audio.device.clone(),
             backend,
         }
