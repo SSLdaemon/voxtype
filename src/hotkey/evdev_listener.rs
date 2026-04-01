@@ -402,8 +402,8 @@ fn evdev_listener_loop(
     // Track if model modifier is currently held
     let mut model_modifier_held = false;
 
-    // Track which profile modifier is currently held
-    let mut active_profile_modifier: Option<String> = None;
+    // Track which profile modifier keys are currently held
+    let mut held_profile_modifiers: HashMap<Key, String> = HashMap::new();
 
     // Track if we're currently "pressed" (to handle repeat events)
     let mut is_pressed = false;
@@ -450,6 +450,7 @@ fn evdev_listener_loop(
             // Clear state when devices change
             active_modifiers.clear();
             model_modifier_held = false;
+            held_profile_modifiers.clear();
             is_pressed = false;
             manager.handle_device_changes();
         }
@@ -460,6 +461,7 @@ fn evdev_listener_loop(
                 // Devices were removed, clear state
                 active_modifiers.clear();
                 model_modifier_held = false;
+                held_profile_modifiers.clear();
                 is_pressed = false;
                 tracing::debug!("Stale devices removed during validation");
             }
@@ -505,11 +507,11 @@ fn evdev_listener_loop(
             // Track profile modifier state
             if let Some(profile_name) = profile_modifiers.get(&key) {
                 match value {
-                    1 => active_profile_modifier = Some(profile_name.clone()),
+                    1 => {
+                        held_profile_modifiers.insert(key, profile_name.clone());
+                    }
                     0 => {
-                        if active_profile_modifier.as_deref() == Some(profile_name.as_str()) {
-                            active_profile_modifier = None;
-                        }
+                        held_profile_modifiers.remove(&key);
                     }
                     _ => {}
                 }
@@ -545,8 +547,9 @@ fn evdev_listener_loop(
                                 None
                             };
 
-                            // Determine profile override based on profile_modifier state
-                            let profile_override = active_profile_modifier.clone();
+                            // Determine profile override from held profile modifier keys
+                            // If multiple are held, pick the most recently inserted (last value)
+                            let profile_override = held_profile_modifiers.values().last().cloned();
 
                             if model_override.is_some() || profile_override.is_some() {
                                 tracing::debug!(

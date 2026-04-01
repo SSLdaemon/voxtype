@@ -260,7 +260,7 @@ RIGHTALT = "formal"        # RightAlt + hotkey activates [profiles.formal]
 
 [profiles.translate]
 post_process_command = "my-script.sh --translate-en"
-timeout_ms = 10000
+post_process_timeout_ms = 10000
 
 [profiles.formal]
 post_process_command = "my-script.sh --formal"

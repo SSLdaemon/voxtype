@@ -1476,7 +1476,7 @@ impl Daemon {
     pub async fn run(&mut self) -> Result<()> {
         tracing::info!("Starting voxtype daemon");
 
-        // Clean up any stale override/cancel files from previous runs
+        // Clean up any stale cancel and profile override files from previous runs
         cleanup_cancel_file();
         cleanup_profile_override();
 

@@ -449,7 +449,7 @@ RIGHTSHIFT = "translate"
 
 [profiles.translate]
 post_process_command = "my-cleanup.sh --translate-en"
-timeout_ms = 10000
+post_process_timeout_ms = 10000
 ```
 
 With this config, bare ScrollLock uses default post-processing, while Right Shift + ScrollLock translates to English. See [Configuration - profile_modifiers](CONFIGURATION.md#hotkeyprofile_modifiers) for details.
