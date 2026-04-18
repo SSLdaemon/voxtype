@@ -2,15 +2,19 @@
 # Build AppImage packages for voxtype
 # Uses pre-built release binaries from releases/{version}/
 #
+# Produces 3 AppImages:
+#   voxtype-{ver}-x86_64.AppImage          Whisper (avx2 + avx512 + vulkan)
+#   voxtype-{ver}-onnx-x86_64.AppImage     ONNX engines (onnx-avx2 + onnx-avx512 + vulkan)
+#   voxtype-{ver}-onnx-cuda-x86_64.AppImage  ONNX CUDA (onnx-cuda + vulkan)
+#
 # Usage:
 #   ./scripts/build-appimage.sh [options] VERSION
 #   ./scripts/build-appimage.sh 0.6.5
 #   ./scripts/build-appimage.sh --variant whisper 0.6.5
-#   ./scripts/build-appimage.sh --variant all --skip-build 0.6.5
 #
 # Options:
-#   --variant NAME   whisper, vulkan, onnx, onnx-cuda, onnx-rocm, all (default: all)
-#   --skip-build     Use existing binaries (default, binaries must exist)
+#   --variant NAME   whisper, onnx, onnx-cuda, all (default: all)
+#   --skip-build     Accepted for compatibility (binaries must already exist)
 
 set -euo pipefail
 
@@ -29,14 +33,12 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --skip-build)
-            # Accepted for compatibility with package.sh, but build-appimage
-            # always uses pre-built binaries
             shift
             ;;
         -h|--help)
             echo "Usage: $0 [--variant NAME] VERSION"
             echo ""
-            echo "Variants: whisper, vulkan, onnx, onnx-cuda, onnx-rocm, all"
+            echo "Variants: whisper, onnx, onnx-cuda, all"
             echo ""
             echo "Requires appimagetool (auto-downloaded if missing)"
             exit 0
@@ -120,6 +122,18 @@ populate_shared_files() {
     cp "$APPIMAGE_DIR/voxtype.svg" "$appdir/"
 }
 
+# Copy a binary into the AppDir if it exists
+copy_binary() {
+    local src="$1"
+    local dst="$2"
+    if [[ -f "$src" ]]; then
+        cp "$src" "$dst"
+        chmod 755 "$dst"
+        return 0
+    fi
+    return 1
+}
+
 # Build a single AppImage from a prepared AppDir
 build_appimage() {
     local appdir="$1"
@@ -132,14 +146,13 @@ build_appimage() {
     echo "  Created: $output_path ($(du -h "$output_path" | cut -f1))"
 }
 
-# Build Whisper CPU AppImage (avx2 + avx512 with wrapper)
+# Whisper AppImage: avx2 + avx512 + vulkan
+# Use VOXTYPE_GPU=1 to select the Vulkan binary at runtime
 build_whisper() {
     echo ""
-    echo "Building Whisper CPU AppImage..."
+    echo "Building Whisper AppImage (avx2 + avx512 + vulkan)..."
 
     local avx2="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-avx2"
-    local avx512="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-avx512"
-
     if [[ ! -f "$avx2" ]]; then
         echo "  Skipping: $avx2 not found" >&2
         return 1
@@ -151,19 +164,19 @@ build_whisper() {
 
     mkdir -p "$appdir/usr/bin" "$appdir/usr/lib/voxtype"
 
-    # CPU-adaptive wrapper as the main binary
+    # CPU-adaptive wrapper (handles GPU dispatch via VOXTYPE_GPU=1)
     cp "$SCRIPT_DIR/voxtype-wrapper.sh" "$appdir/usr/bin/voxtype"
     chmod 755 "$appdir/usr/bin/voxtype"
 
-    # Tiered binaries
-    cp "$avx2" "$appdir/usr/lib/voxtype/voxtype-avx2"
-    chmod 755 "$appdir/usr/lib/voxtype/voxtype-avx2"
-    if [[ -f "$avx512" ]]; then
-        cp "$avx512" "$appdir/usr/lib/voxtype/voxtype-avx512"
-        chmod 755 "$appdir/usr/lib/voxtype/voxtype-avx512"
-    fi
+    # Whisper CPU binaries
+    copy_binary "$avx2" "$appdir/usr/lib/voxtype/voxtype-avx2"
+    copy_binary "$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-avx512" \
+        "$appdir/usr/lib/voxtype/voxtype-avx512" || true
 
-    # AppRun entry point
+    # Whisper Vulkan GPU binary
+    copy_binary "$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-vulkan" \
+        "$appdir/usr/lib/voxtype/voxtype-vulkan" || true
+
     cp "$APPIMAGE_DIR/AppRun" "$appdir/"
     chmod 755 "$appdir/AppRun"
 
@@ -171,43 +184,13 @@ build_whisper() {
     build_appimage "$appdir" "voxtype-${VERSION}-x86_64.AppImage"
 }
 
-# Build Vulkan GPU AppImage (single binary)
-build_vulkan() {
-    echo ""
-    echo "Building Vulkan GPU AppImage..."
-
-    local vulkan="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-vulkan"
-
-    if [[ ! -f "$vulkan" ]]; then
-        echo "  Skipping: $vulkan not found" >&2
-        return 1
-    fi
-
-    local appdir
-    appdir="$(mktemp -d "${TMPDIR:-/tmp}/voxtype-appimage.XXXXXX")"
-    trap 'rm -rf "$appdir"' RETURN
-
-    mkdir -p "$appdir/usr/bin" "$appdir/usr/lib/voxtype"
-
-    cp "$vulkan" "$appdir/usr/lib/voxtype/voxtype-vulkan"
-    chmod 755 "$appdir/usr/lib/voxtype/voxtype-vulkan"
-    ln -s ../lib/voxtype/voxtype-vulkan "$appdir/usr/bin/voxtype"
-
-    cp "$APPIMAGE_DIR/AppRun" "$appdir/"
-    chmod 755 "$appdir/AppRun"
-
-    populate_shared_files "$appdir"
-    build_appimage "$appdir" "voxtype-${VERSION}-vulkan-x86_64.AppImage"
-}
-
-# Build ONNX CPU AppImage (onnx-avx2 + onnx-avx512 with wrapper)
+# ONNX AppImage: onnx-avx2 + onnx-avx512 + vulkan
+# Wrapper detects engine from config/CLI/env and dispatches accordingly
 build_onnx() {
     echo ""
-    echo "Building ONNX CPU AppImage..."
+    echo "Building ONNX AppImage (onnx-avx2 + onnx-avx512 + vulkan)..."
 
     local onnx_avx2="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-onnx-avx2"
-    local onnx_avx512="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-onnx-avx512"
-
     if [[ ! -f "$onnx_avx2" ]]; then
         echo "  Skipping: $onnx_avx2 not found" >&2
         return 1
@@ -219,16 +202,18 @@ build_onnx() {
 
     mkdir -p "$appdir/usr/bin" "$appdir/usr/lib/voxtype"
 
-    # ONNX-specific CPU-adaptive wrapper
+    # Multi-engine wrapper (dispatches between ONNX and Vulkan)
     cp "$APPIMAGE_DIR/voxtype-onnx-wrapper.sh" "$appdir/usr/bin/voxtype"
     chmod 755 "$appdir/usr/bin/voxtype"
 
-    cp "$onnx_avx2" "$appdir/usr/lib/voxtype/voxtype-onnx-avx2"
-    chmod 755 "$appdir/usr/lib/voxtype/voxtype-onnx-avx2"
-    if [[ -f "$onnx_avx512" ]]; then
-        cp "$onnx_avx512" "$appdir/usr/lib/voxtype/voxtype-onnx-avx512"
-        chmod 755 "$appdir/usr/lib/voxtype/voxtype-onnx-avx512"
-    fi
+    # ONNX CPU binaries
+    copy_binary "$onnx_avx2" "$appdir/usr/lib/voxtype/voxtype-onnx-avx2"
+    copy_binary "$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-onnx-avx512" \
+        "$appdir/usr/lib/voxtype/voxtype-onnx-avx512" || true
+
+    # Vulkan binary for whisper engine fallback
+    copy_binary "$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-vulkan" \
+        "$appdir/usr/lib/voxtype/voxtype-vulkan" || true
 
     cp "$APPIMAGE_DIR/AppRun" "$appdir/"
     chmod 755 "$appdir/AppRun"
@@ -237,13 +222,12 @@ build_onnx() {
     build_appimage "$appdir" "voxtype-${VERSION}-onnx-x86_64.AppImage"
 }
 
-# Build ONNX CUDA AppImage (single binary)
+# ONNX CUDA AppImage: onnx-cuda + vulkan
 build_onnx_cuda() {
     echo ""
-    echo "Building ONNX CUDA AppImage..."
+    echo "Building ONNX CUDA AppImage (onnx-cuda + vulkan)..."
 
     local onnx_cuda="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-onnx-cuda"
-
     if [[ ! -f "$onnx_cuda" ]]; then
         echo "  Skipping: $onnx_cuda not found" >&2
         return 1
@@ -255,44 +239,22 @@ build_onnx_cuda() {
 
     mkdir -p "$appdir/usr/bin" "$appdir/usr/lib/voxtype"
 
-    cp "$onnx_cuda" "$appdir/usr/lib/voxtype/voxtype-onnx-cuda"
-    chmod 755 "$appdir/usr/lib/voxtype/voxtype-onnx-cuda"
-    ln -s ../lib/voxtype/voxtype-onnx-cuda "$appdir/usr/bin/voxtype"
+    # Multi-engine wrapper
+    cp "$APPIMAGE_DIR/voxtype-onnx-wrapper.sh" "$appdir/usr/bin/voxtype"
+    chmod 755 "$appdir/usr/bin/voxtype"
+
+    # ONNX CUDA binary
+    copy_binary "$onnx_cuda" "$appdir/usr/lib/voxtype/voxtype-onnx-cuda"
+
+    # Vulkan binary for whisper engine fallback
+    copy_binary "$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-vulkan" \
+        "$appdir/usr/lib/voxtype/voxtype-vulkan" || true
 
     cp "$APPIMAGE_DIR/AppRun" "$appdir/"
     chmod 755 "$appdir/AppRun"
 
     populate_shared_files "$appdir"
     build_appimage "$appdir" "voxtype-${VERSION}-onnx-cuda-x86_64.AppImage"
-}
-
-# Build ONNX ROCm AppImage (single binary)
-build_onnx_rocm() {
-    echo ""
-    echo "Building ONNX ROCm AppImage..."
-
-    local onnx_rocm="$RELEASE_DIR/voxtype-${VERSION}-linux-x86_64-onnx-rocm"
-
-    if [[ ! -f "$onnx_rocm" ]]; then
-        echo "  Skipping: $onnx_rocm not found" >&2
-        return 1
-    fi
-
-    local appdir
-    appdir="$(mktemp -d "${TMPDIR:-/tmp}/voxtype-appimage.XXXXXX")"
-    trap 'rm -rf "$appdir"' RETURN
-
-    mkdir -p "$appdir/usr/bin" "$appdir/usr/lib/voxtype"
-
-    cp "$onnx_rocm" "$appdir/usr/lib/voxtype/voxtype-onnx-rocm"
-    chmod 755 "$appdir/usr/lib/voxtype/voxtype-onnx-rocm"
-    ln -s ../lib/voxtype/voxtype-onnx-rocm "$appdir/usr/bin/voxtype"
-
-    cp "$APPIMAGE_DIR/AppRun" "$appdir/"
-    chmod 755 "$appdir/AppRun"
-
-    populate_shared_files "$appdir"
-    build_appimage "$appdir" "voxtype-${VERSION}-onnx-rocm-x86_64.AppImage"
 }
 
 # Main
@@ -305,28 +267,20 @@ case "$VARIANT" in
     whisper)
         build_whisper || failed=1
         ;;
-    vulkan)
-        build_vulkan || failed=1
-        ;;
     onnx)
         build_onnx || failed=1
         ;;
     onnx-cuda)
         build_onnx_cuda || failed=1
         ;;
-    onnx-rocm)
-        build_onnx_rocm || failed=1
-        ;;
     all)
         build_whisper || failed=1
-        build_vulkan || failed=1
         build_onnx || failed=1
         build_onnx_cuda || failed=1
-        build_onnx_rocm || failed=1
         ;;
     *)
         echo "Error: Unknown variant '$VARIANT'" >&2
-        echo "Valid variants: whisper, vulkan, onnx, onnx-cuda, onnx-rocm, all" >&2
+        echo "Valid variants: whisper, onnx, onnx-cuda, all" >&2
         exit 1
         ;;
 esac

@@ -494,11 +494,13 @@ mv voxtype-*-x86_64.AppImage ~/.local/bin/voxtype
 ```
 
 Available AppImage variants:
-- `voxtype-{ver}-x86_64.AppImage` - CPU, Whisper engine (recommended)
-- `voxtype-{ver}-vulkan-x86_64.AppImage` - GPU via Vulkan (Whisper)
-- `voxtype-{ver}-onnx-x86_64.AppImage` - CPU, ONNX engines (Parakeet, Moonshine, etc.)
-- `voxtype-{ver}-onnx-cuda-x86_64.AppImage` - NVIDIA GPU, ONNX engines
-- `voxtype-{ver}-onnx-rocm-x86_64.AppImage` - AMD GPU, ONNX engines
+- `voxtype-{ver}-x86_64.AppImage` - Whisper engine with CPU and Vulkan GPU support (recommended)
+- `voxtype-{ver}-onnx-x86_64.AppImage` - ONNX engines (Parakeet, Moonshine, etc.) + Vulkan Whisper
+- `voxtype-{ver}-onnx-cuda-x86_64.AppImage` - ONNX engines with NVIDIA CUDA + Vulkan Whisper
+
+Each ONNX AppImage also includes the Vulkan Whisper binary, so you can switch between
+engines via `engine = "whisper"` or `engine = "parakeet"` in your config without changing
+AppImages. For GPU-accelerated Whisper in the Whisper-only AppImage, set `VOXTYPE_GPU=1`.
 
 ## Waybar Integration
 

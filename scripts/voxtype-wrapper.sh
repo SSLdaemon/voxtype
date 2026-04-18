@@ -4,6 +4,12 @@
 
 VOXTYPE_LIB="${VOXTYPE_LIB:-/usr/lib/voxtype}"
 
+# GPU mode: use Vulkan binary if available and requested
+# Set VOXTYPE_GPU=1 to prefer the Vulkan binary
+if [ "$VOXTYPE_GPU" = "1" ] && [ -x "$VOXTYPE_LIB/voxtype-vulkan" ]; then
+    exec "$VOXTYPE_LIB/voxtype-vulkan" "$@"
+fi
+
 # Detect AVX-512 support (Linux-specific)
 if [ -f /proc/cpuinfo ] && grep -q avx512f /proc/cpuinfo 2>/dev/null; then
     # Prefer AVX-512 binary if available
