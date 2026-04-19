@@ -1167,6 +1167,175 @@ done
 journalctl --user -u voxtype --since "1 minute ago" | grep -E "Starting|Ready|shutdown"
 ```
 
+## v0.6.6 Feature Verification
+
+Tests for bug fixes and enhancements introduced in v0.6.6.
+
+### Text Replacements with Spoken Punctuation (#172)
+
+Verifies that text replacements match spoken words before punctuation conversion.
+
+```bash
+# Unit tests (no mic needed)
+cargo test replacements_match_spoken -- --nocapture
+cargo test replacements_with_multiple -- --nocapture
+# Expected: both tests pass
+
+# Runtime test (requires mic and config change):
+# 1. Add to config.toml:
+#    [text]
+#    spoken_punctuation = true
+#    replacements = [
+#      { from = "slash pr", to = "/pr" },
+#    ]
+# 2. Restart daemon, record "slash pr one two three"
+# Expected: "/pr one two three" (not "/ pr one two three")
+```
+
+### Remote Backend initial_prompt (#278)
+
+Verifies that initial_prompt is forwarded to remote transcription endpoints.
+
+```bash
+# Unit tests (no remote server needed)
+cargo test multipart_body_includes_prompt -- --nocapture
+cargo test multipart_body_excludes -- --nocapture
+# Expected: all 3 tests pass (includes, excludes_empty, excludes_when_none)
+```
+
+### Ydotool Socket Detection (#306)
+
+Verifies ydotool socket is found at non-standard paths (Fedora).
+
+```bash
+# Unit tests
+cargo test find_ydotool_socket -- --nocapture
+# Expected: 2 tests pass (env override and returns_none)
+
+# Structural verification
+grep -c "find_ydotool_socket" src/output/ydotool.rs src/output/paste.rs
+# Expected: references in both files
+```
+
+### Eitype in Paste Mode (#259)
+
+Verifies eitype is in the paste mode Ctrl+V simulation chain.
+
+```bash
+# Structural verification
+grep -c "simulate_paste_eitype\|is_eitype_available" src/output/paste.rs
+# Expected: 6+ references
+
+# Runtime test (requires eitype installed):
+# 1. Set mode = "paste" in config.toml
+# 2. Hide wtype: sudo mv /usr/bin/wtype /usr/bin/wtype.bak
+# 3. Record and transcribe
+# 4. Check logs: journalctl --user -u voxtype --since "30 seconds ago" | grep -i eitype
+# 5. Restore: sudo mv /usr/bin/wtype.bak /usr/bin/wtype
+```
+
+### Duplicate Notification Fix (#268)
+
+Verifies driver-level notifications were removed (daemon handles them).
+
+```bash
+# Structural verification - no notify code in drivers
+echo "ydotool.rs:" $(grep -c "send_notification\|self\.notify" src/output/ydotool.rs)
+echo "dotool.rs:" $(grep -c "send_notification\|self\.notify" src/output/dotool.rs)
+echo "clipboard.rs:" $(grep -c "send_notification\|self\.notify" src/output/clipboard.rs)
+echo "xclip.rs:" $(grep -c "send_notification\|self\.notify" src/output/xclip.rs)
+# Expected: all 0
+
+# Runtime test (requires on_transcription = true):
+# 1. Set [output.notification] on_transcription = true in config.toml
+# 2. Restart daemon, record and transcribe
+# 3. Verify exactly ONE notification appears (not two)
+```
+
+### Xclip Clipboard Fallback on X11 (#256)
+
+Verifies xclip is in the clipboard mode output chain.
+
+```bash
+# Structural verification
+grep -A5 "OutputMode::Clipboard =>" src/output/mod.rs | grep -c "XclipOutput"
+# Expected: 1
+
+# Config verification
+voxtype config 2>&1 | grep -A10 "Output Chain"
+# Expected: shows wl-copy and xclip detection status
+```
+
+### KDE Plasma Compositor Docs (#296)
+
+Verifies KDE Plasma keybinding docs are present.
+
+```bash
+grep -c "KWin\|KDE Plasma" README.md docs/USER_MANUAL.md docs/CONFIGURATION.md
+# Expected: matches in all three files
+```
+
+### Audio Feedback on Transcription Completion (#258)
+
+Verifies the TranscriptionComplete sound event exists and is wired in.
+
+```bash
+# Structural verification
+grep -c "TranscriptionComplete" src/audio/feedback.rs src/daemon.rs
+# Expected: 2+ in feedback.rs, 2+ in daemon.rs
+
+# Runtime test (requires audio feedback enabled):
+# 1. Set [audio.feedback] enabled = true, theme = "default" in config.toml
+# 2. Restart daemon
+# 3. Record and transcribe
+# Expected: THREE distinct sounds - start beep, stop beep, completion ping
+# Previously only start and stop played
+```
+
+### MPRIS Media Player Pause (#249)
+
+Verifies the pause_media feature is wired up.
+
+```bash
+# CLI flag exists
+voxtype record start --help 2>&1 | grep -i "pause.media"
+# Expected: --pause-media flag shown
+
+# Config field exists
+grep -c "pause_media" src/config.rs
+# Expected: 4+ references
+
+# Module exists
+test -f src/audio/media.rs && echo "media.rs exists" || echo "MISSING"
+# Expected: media.rs exists
+
+# Runtime test (requires playerctl and a media player):
+# 1. Start playing music (Spotify, Firefox video, mpv, etc.)
+# 2. playerctl status  # Should show "Playing"
+# 3. Set [audio] pause_media = true in config.toml, restart daemon
+# 4. voxtype record start
+# 5. playerctl status  # Should show "Paused"
+# 6. sleep 3 && voxtype record stop
+# 7. Wait for transcription, then: playerctl status  # Should show "Playing"
+```
+
+### Post-Process trim and fallback_on_empty (#270)
+
+Verifies the new post-process config options work.
+
+```bash
+# Unit tests
+cargo test no_trim_preserves -- --nocapture
+cargo test no_trim_still_strips -- --nocapture
+cargo test no_fallback_on_empty -- --nocapture
+cargo test fallback_on_empty_default -- --nocapture
+# Expected: all 4 tests pass
+
+# Structural verification
+grep -c "trim\|fallback_on_empty" src/output/post_process.rs
+# Expected: 10+ references
+```
+
 ## Quick Smoke Test Script
 
 ```bash
