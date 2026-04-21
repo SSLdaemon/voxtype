@@ -91,7 +91,7 @@ Current state mapping:
 
 Current state file path:
 
-- `/run/user/1000/voxtype/state`
+- `$XDG_RUNTIME_DIR/voxtype/state`
 
 That path comes from Voxtype's `state_file = "auto"` behavior.
 
