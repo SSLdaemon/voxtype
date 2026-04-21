@@ -1,0 +1,25 @@
+# Voxtype listening overlay
+# Restart after edits:
+# systemctl --user restart voxtype-listening-overlay.service
+
+[overlay]
+screen=primary
+width=176
+height=24
+right_margin=22
+bottom_gap=8
+corner_radius=12
+bar_count=14
+bar_spacing=4
+show_transcribing=false
+show_idle=false
+
+[voxtype]
+state_file=auto
+
+[style]
+background=#0e1318
+border=#76f2de
+recording=#76f2de
+recording_peak=#f4fffd
+transcribing=#f2b661

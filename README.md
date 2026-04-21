@@ -85,6 +85,21 @@ Then disable the built-in hotkey in your config:
 enabled = false
 ```
 
+### Optional KDE Listening Overlay
+
+This fork also includes an optional KDE/Plasma Wayland companion utility in [`extras/kde-listening-overlay/`](extras/kde-listening-overlay/).
+
+It does not change core Voxtype behavior. Instead, it watches Voxtype's runtime state file and shows a slim equalizer-style HUD only while recording.
+
+Current scope and assumptions:
+
+- KDE Plasma on Wayland
+- Qt6 Widgets and LayerShellQt installed
+- bottom-right panel layout calibration
+- user-level systemd startup
+
+Build and setup notes live in [`extras/kde-listening-overlay/README.md`](extras/kde-listening-overlay/README.md).
+
 > **X11 / Built-in hotkey fallback:** If you're on X11 or prefer voxtype's built-in hotkey (ScrollLock by default), add yourself to the `input` group: `sudo usermod -aG input $USER` and log out/in. See the [User Manual](docs/USER_MANUAL.md) for details.
 
 > **Omarchy / Multi-modifier keybindings:** If using keybindings with multiple modifiers (e.g., `SUPER+CTRL+X`), releasing keys slowly can cause typed text to trigger window manager shortcuts instead of inserting text. See [Modifier Key Interference](docs/TROUBLESHOOTING.md#modifier-key-interference-hyprlandsway) in the troubleshooting guide for the solution using output hooks and Hyprland submaps.

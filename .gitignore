@@ -1,6 +1,7 @@
 # Build artifacts
 /target
 /dist
+/build-overlay
 
 # AUR repos (nested git repos)
 /packaging/arch/
