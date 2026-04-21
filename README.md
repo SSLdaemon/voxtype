@@ -14,6 +14,8 @@ This fork keeps upstream Voxtype intact and adds an optional KDE Plasma Wayland 
 
 The overlay is a separate helper executable. It watches Voxtype's runtime state file and shows a slim, non-interactive HUD only while recording.
 
+The goal is to provide a visually polished KDE-native recording indicator while keeping the implementation lightweight and as close to upstream Voxtype as practical.
+
 Fork focus:
 
 - preserve normal Voxtype behavior for users who do not want the overlay

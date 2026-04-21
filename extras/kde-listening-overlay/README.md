@@ -4,6 +4,8 @@ This directory contains the current known-good version of the KDE/Plasma Wayland
 
 The overlay is a separate helper executable. It watches Voxtype's runtime state file and shows a slim equalizer-style HUD only while recording.
 
+It is intended to feel visually polished without becoming heavy or intrusive, while staying as close as practical to upstream Voxtype by remaining a separate companion utility instead of a core patch.
+
 ## What It Is For
 
 This overlay is meant for KDE Plasma users running Voxtype in toggle mode through KDE shortcuts.
