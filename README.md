@@ -22,6 +22,8 @@ Fork focus:
 
 If you are here for the KDE overlay, start with [`extras/kde-listening-overlay/README.md`](extras/kde-listening-overlay/README.md). If you just want standard Voxtype, the rest of this README still applies.
 
+![KDE Plasma listening overlay shown above the panel while recording](extras/kde-listening-overlay/assets/kde-overlay-recording.png)
+
 ## Features
 
 - **Works on any Linux desktop** - Uses compositor keybindings (Hyprland, Sway, River) with evdev fallback for X11 and other environments

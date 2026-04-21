@@ -14,6 +14,8 @@ It is designed to make the recording state more obvious without changing Voxtype
 - KDE keeps handling the shortcut
 - the overlay only reacts to Voxtype state changes
 
+![KDE Plasma listening overlay shown above the panel while recording](assets/kde-overlay-recording.png)
+
 ## Current Scope
 
 This implementation is intentionally narrow:
