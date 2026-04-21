@@ -8,6 +8,24 @@ Push-to-talk voice-to-text for Linux. Optimized for Wayland, works on X11 too.
 
 Hold a hotkey (default: ScrollLock) while speaking, release to transcribe and output the text at your cursor position.
 
+## This Fork
+
+This fork keeps upstream Voxtype intact and adds an optional KDE Plasma Wayland listening overlay in [`extras/kde-listening-overlay/`](extras/kde-listening-overlay/).
+
+The overlay is a separate helper executable. It watches Voxtype's runtime state file and shows a slim, non-interactive HUD only while recording.
+
+The goal is to provide a visually polished KDE-native recording indicator while keeping the implementation lightweight and as close to upstream Voxtype as practical.
+
+Fork focus:
+
+- preserve normal Voxtype behavior for users who do not want the overlay
+- improve KDE Plasma toggle-mode UX with a visible recording indicator
+- keep the overlay as an optional companion utility rather than a core daemon patch
+
+If you are here for the KDE overlay, start with [`extras/kde-listening-overlay/README.md`](extras/kde-listening-overlay/README.md). If you just want standard Voxtype, the rest of this README still applies.
+
+![KDE Plasma listening overlay shown above the panel while recording](extras/kde-listening-overlay/assets/kde-overlay-recording.png)
+
 ## Features
 
 - **Works on any Linux desktop** - Uses compositor keybindings (Hyprland, Sway, River) with evdev fallback for X11 and other environments
@@ -84,6 +102,21 @@ Then disable the built-in hotkey in your config:
 [hotkey]
 enabled = false
 ```
+
+### Optional KDE Listening Overlay
+
+This fork also includes an optional KDE/Plasma Wayland companion utility in [`extras/kde-listening-overlay/`](extras/kde-listening-overlay/).
+
+It does not change core Voxtype behavior. Instead, it watches Voxtype's runtime state file and shows a slim equalizer-style HUD only while recording.
+
+Current scope and assumptions:
+
+- KDE Plasma on Wayland
+- Qt6 Widgets and LayerShellQt installed
+- bottom-right panel layout calibration
+- user-level systemd startup
+
+Build and setup notes live in [`extras/kde-listening-overlay/README.md`](extras/kde-listening-overlay/README.md).
 
 > **X11 / Built-in hotkey fallback:** If you're on X11 or prefer voxtype's built-in hotkey (ScrollLock by default), add yourself to the `input` group: `sudo usermod -aG input $USER` and log out/in. See the [User Manual](docs/USER_MANUAL.md) for details.
 

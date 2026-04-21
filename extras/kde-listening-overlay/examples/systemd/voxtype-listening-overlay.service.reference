@@ -1,0 +1,13 @@
+[Unit]
+Description=Voxtype Listening Overlay
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/voxtype-listening-overlay --config %h/.config/voxtype-overlay/config.ini
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

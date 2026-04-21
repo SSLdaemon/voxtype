@@ -1,0 +1,3 @@
+#!/bin/sh
+VOXTYPE_BIN="${VOXTYPE_BIN:-voxtype}"
+exec "$VOXTYPE_BIN" record cancel "$@"
