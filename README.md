@@ -8,6 +8,20 @@ Push-to-talk voice-to-text for Linux. Optimized for Wayland, works on X11 too.
 
 Hold a hotkey (default: ScrollLock) while speaking, release to transcribe and output the text at your cursor position.
 
+## This Fork
+
+This fork keeps upstream Voxtype intact and adds an optional KDE Plasma Wayland listening overlay in [`extras/kde-listening-overlay/`](extras/kde-listening-overlay/).
+
+The overlay is a separate helper executable. It watches Voxtype's runtime state file and shows a slim, non-interactive HUD only while recording.
+
+Fork focus:
+
+- preserve normal Voxtype behavior for users who do not want the overlay
+- improve KDE Plasma toggle-mode UX with a visible recording indicator
+- keep the overlay as an optional companion utility rather than a core daemon patch
+
+If you are here for the KDE overlay, start with [`extras/kde-listening-overlay/README.md`](extras/kde-listening-overlay/README.md). If you just want standard Voxtype, the rest of this README still applies.
+
 ## Features
 
 - **Works on any Linux desktop** - Uses compositor keybindings (Hyprland, Sway, River) with evdev fallback for X11 and other environments
